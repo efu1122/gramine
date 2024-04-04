@@ -45,7 +45,7 @@ stage('build') {
         // install
         sh '''
             ninja -vC build/ install
-            gramine-sgx-gen-private-key
+            gramine-sgx-gen-private-key -f
         '''
     } finally {
         archiveArtifacts '''

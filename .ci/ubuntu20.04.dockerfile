@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    apache2-utils \
     autoconf \
     bc \
     bison \
@@ -8,6 +9,7 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     cargo \
     clang \
     curl \
+    default-jre \
     flex \
     gawk \
     gdb \
@@ -16,6 +18,8 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     jq \
     libapr1-dev \
     libaprutil1-dev \
+    libcjson-dev \
+    libcurl4-openssl-dev \
     libelf-dev \
     libevent-dev \
     libexpat1 \
@@ -35,6 +39,8 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libxrender1 \
     libxxf86vm1 \
     linux-headers-generic \
+    linux-tools-5.4.0-26-generic \
+    maven \
     musl \
     musl-tools \
     nasm \
@@ -45,6 +51,7 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     pkg-config \
     protobuf-c-compiler \
     protobuf-compiler \
+    pylint3 \
     python \
     python3-apport \
     python3-apt \
@@ -53,7 +60,9 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3-cryptography \
     python3-jinja2 \
     python3-lxml \
+    python3-matplotlib \
     python3-numpy \
+    python3-pandas \
     python3-pip \
     python3-pkg-resources \
     python3-protobuf \
@@ -62,6 +71,8 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3-pytest-xdist \
     python3-scipy \
     python3-sphinx-rtd-theme \
+    python3-toml \
+    r-base \
     shellcheck \
     sphinx-doc \
     sqlite3 \
@@ -70,6 +81,8 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wget \
     zlib1g \
     zlib1g-dev
+
+RUN ln -sf /usr/lib/linux-tools-5.4.0-26/perf /usr/bin/perf
 
 # Needed by DCAP attestation e.g. in "CI-Examples/ra-tls-mbedtls"
 # Intel's RSA-2048 key signing the intel-sgx/sgx_repo repository. Expires 2027-03-20.

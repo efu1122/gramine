@@ -26,6 +26,24 @@ node('sgx-edmm && aesni') {
         load '.ci/lib/stage-build-sgx.jenkinsfile'
         load '.ci/lib/stage-test.jenkinsfile'
         load '.ci/lib/stage-test-sgx.jenkinsfile'
-        load '.ci/lib/stage-clean-check.jenkinsfile'
+
+        stage('run-bench') {
+            dir('CI-Benchmarks') {
+                checkout scm: scmGit(
+                    branches: [[name: '*/erica/test-gramine']],
+                    extensions: [[$class: 'CloneOption', shallow: true, depth: 1, timeout: 30]],
+                    userRemoteConfigs: [[credentialsId: 'chiache', url: 'git@github.com:oscarlab/gramine-edmm-tests.git']])
+                
+                load '.ci/run-bench.jenkinsfile'
+            }
+        }
+
+        stage('plot') {
+            dir('CI-Benchmarks') {
+                load '.ci/plot.jenkinsfile'
+            }
+        }
+
+        load '.ci/lib/stage-clean-soft-check.jenkinsfile'
     }
 }
