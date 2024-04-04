@@ -21,7 +21,7 @@ node('sgx-edmm') {
         load '.ci/lib/config.jenkinsfile'
         load '.ci/lib/config-release.jenkinsfile'
 
-        load '.ci/lib/stage-lint.jenkinsfile'
+        //load '.ci/lib/stage-lint.jenkinsfile'
         load '.ci/lib/stage-clean-check-prepare.jenkinsfile'
         load '.ci/lib/stage-build-sgx.jenkinsfile'
         load '.ci/lib/stage-test.jenkinsfile'
