@@ -1,4 +1,6 @@
 stage('test') {
+    if (params.SKIP_TEST != true) {
+
     if (env.RA_TYPE == null) {
         env.RA_TYPE = 'epid'
     }
@@ -69,5 +71,7 @@ stage('test') {
             junit 'tests.xml'
             sh 'rm -rf tests.xml'
         }
+    }
+
     }
 }

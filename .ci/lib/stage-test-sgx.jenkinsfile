@@ -1,4 +1,6 @@
 stage('test-sgx') {
+    if (params.SKIP_TEST != true) {
+
     sh '''
         find ${GRAMINE_LIBDIR} -exec file {} \\; | \
             grep ELF | \
@@ -178,5 +180,6 @@ stage('test-sgx') {
                 exit 1; \
             fi
         '''
+    }
     }
 }
