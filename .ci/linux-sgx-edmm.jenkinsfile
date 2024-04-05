@@ -30,7 +30,7 @@ node('sgx-edmm') {
         stage('run-bench') {
             dir('CI-Benchmarks') {
                 checkout scm: scmGit(
-                    branches: [[name: '*/erica/test-gramine']],
+                    branches: [[name: '*/erica/test-gramine-preheat']],
                     extensions: [[$class: 'CloneOption', shallow: true, depth: 1, timeout: 30]],
                     userRemoteConfigs: [[credentialsId: 'chiache', url: 'git@github.com:oscarlab/gramine-edmm-tests.git']])
                 
