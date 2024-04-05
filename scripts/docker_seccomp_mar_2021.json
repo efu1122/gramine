@@ -776,6 +776,16 @@
 				]
 			},
 			"excludes": {}
+		},
+		{
+			"names": [
+				"perf_event_open"
+			],
+			"action": "SCMP_ACT_ALLOW",
+			"args": [],
+			"comment": "",
+			"includes": {},
+			"excludes": {}
 		}
 	]
 }
