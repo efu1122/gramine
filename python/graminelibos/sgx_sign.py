@@ -323,9 +323,34 @@ def populate_memory_areas(attr, areas, enclave_base, enclave_heap_min):
 
     gen_area_content(attr, areas, enclave_base, enclave_heap_min)
 
-    # Enclaves with EDMM do not add "free" memory at startup.
+    # Enclaves with EDMM do not add "free" memory at startup, but if heap is pre-allocated
+    # using `sgx.edmm_heap_prealloc_size` then add the "free" pre-allocated pages.
+    #
+    # Assumption here is that we have a single heap region (called "free") that is beneath all
+    # other statically allocated memory areas(manifest, ssa, tls, tcs, stack, sig_stack, pal).
     if attr['edmm_enable']:
-        return areas
+        free_preallocated = []
+        if attr['edmm_heap_prealloc_size'] > 0:
+
+            if last_populated_addr < attr['edmm_heap_prealloc_size']:
+                raise Exception("Not enough space for edmm heap pre-allocation! Increase "
+                                "'sgx.enclave_size' or decrease 'sgx.edmm_heap_prealloc_size' in "
+                                "the manifest.")
+
+            if last_populated_addr < enclave_heap_min:
+                raise Exception("No space for heap! Increase 'sgx.enclave_size' in the manifest.")
+
+            flags = PAGEINFO_R | PAGEINFO_W | PAGEINFO_X | PAGEINFO_REG
+            start_addr = last_populated_addr - attr['edmm_heap_prealloc_size']
+            if start_addr < enclave_heap_min:
+                raise Exception(f"'sgx.edmm_heap_prealloc_size' must be less than total heap size "
+                                f"{last_populated_addr-enclave_heap_min:016x}")
+
+            free_preallocated.append(
+                MemoryArea('free', addr=start_addr, size=attr['edmm_heap_prealloc_size'],
+                           flags=flags, measure=False))
+
+        return areas + free_preallocated
 
     free_areas = []
     for area in areas:
@@ -484,6 +509,15 @@ def generate_measurement(enclave_base, attr, areas, verbose=False):
     return mrenclave.digest()
 
 
+def has_memory_area_holes(attr, areas, enclave_base):
+    last_populated_addr = enclave_base + attr['enclave_size']
+    for area in areas:
+        if last_populated_addr != area.addr + area.size:
+            return True
+        last_populated_addr = area.addr
+    return False
+
+
 def get_mrenclave_and_manifest(manifest_path, libpal, verbose=False):
     with open(manifest_path, 'rb') as f: # pylint: disable=invalid-name
         manifest_data = f.read()
@@ -494,13 +528,19 @@ def get_mrenclave_and_manifest(manifest_path, libpal, verbose=False):
         'enclave_size': parse_size(manifest_sgx['enclave_size']),
         'edmm_enable': manifest_sgx.get('edmm_enable', False),
         'max_threads': manifest_sgx['max_threads'],
+        'edmm_heap_prealloc_size': parse_size(manifest_sgx['edmm_heap_prealloc_size']),
     }
+
+    if not attr['edmm_enable'] and attr['edmm_heap_prealloc_size'] > 0:
+        raise Exception("'sgx.edmm_heap_prealloc_size' must be used together with "
+                        "'sgx.edmm_enable'!")
 
     if verbose:
         print('Attributes (required for enclave measurement):')
         print(f'    size:        {attr["enclave_size"]:#x}')
         print(f'    edmm:        {attr["edmm_enable"]}')
         print(f'    max_threads: {attr["max_threads"]}')
+        print(f'    edmm_heap_prealloc_size: {attr["edmm_heap_prealloc_size"]:#x}')
 
         print('SGX remote attestation:')
         attestation_type = manifest_sgx.get('remote_attestation', 'none')
@@ -529,6 +569,9 @@ def get_mrenclave_and_manifest(manifest_path, libpal, verbose=False):
         ] + memory_areas
 
     memory_areas = populate_memory_areas(attr, memory_areas, enclave_base, enclave_heap_min)
+
+    if has_memory_area_holes(attr, memory_areas, enclave_base):
+        raise Exception('Cannot have holes between enclave memory areas!')
 
     # Generate measurement
     mrenclave = generate_measurement(enclave_base, attr, memory_areas, verbose=verbose)

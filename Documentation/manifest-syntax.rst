@@ -667,6 +667,21 @@ explicit value will take precedence.
 .. note::
    Support for EDMM first appeared in Linux 6.0.
 
+EDMM heap pre-allocated size
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+    sgx.edmm_heap_prealloc_size = "[SIZE]"
+    (default: "0")
+
+When ``sgx.edmm_enable`` is enabled, users can precisely set the amount of heap
+to pre-allocate by setting this option. For example, when size is set to "64M",
+Gramine will pre-allocate 64M of enclave memory (with read-write-execute
+permissions, similar to SGXv1) rather than allocating dynamically. Higher values
+in this option may improve run time but could worsen startup time, and
+vice versa.
+
 Enclave size
 ^^^^^^^^^^^^
 
@@ -1150,8 +1165,10 @@ predictable.
 Please note that using this option makes sense only when the :term:`EPC` is
 large enough to hold the whole heap area.
 
-This option is invalid (i.e. must be ``false``) if specified together with
-``sgx.edmm_enable``, as there are no heap pages to pre-fault.
+This option is invalid (i.e. must be ``false``) when only ``sgx.edmm_enable`` is
+specified, as there are no heap pages to pre-fault. But if used together with
+``sgx.edmm_heap_prealloc_size``, then the pre-allocated heap will also be
+pre-faulted.
 
 Enabling per-thread and process-wide SGX stats
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -328,6 +328,7 @@ class Manifest:
             sgx_cpu_features.setdefault('amx', "unspecified")
             sgx_cpu_features.setdefault('mpx', "disabled")
             sgx_cpu_features.setdefault('pkru', "disabled")
+        sgx.setdefault('edmm_heap_prealloc_size', '0')
 
         if not isinstance(sgx['trusted_files'], list):
             raise ValueError("Unsupported trusted files syntax, more info: " +

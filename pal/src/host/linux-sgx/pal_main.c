@@ -588,8 +588,16 @@ static void post_callback(void) {
 
 __attribute_no_sanitize_address
 static void do_preheat_enclave(void) {
-    for (uint8_t* i = g_pal_linuxsgx_state.heap_min; i < (uint8_t*)g_pal_linuxsgx_state.heap_max;
-             i += g_page_size) {
+    /* Heap allocation requests are serviced starting from highest heap address. So when
+     * sgx.edmm_heap_prealloc_size is turned on, preheat from the top of the heap until
+     * sgx.edmm_heap_prealloc_size. */
+    uint8_t* start = (uint8_t*)g_pal_linuxsgx_state.heap_min;
+    if (g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
+        start = (uint8_t*)g_pal_linuxsgx_state.heap_max -
+                g_pal_linuxsgx_state.edmm_heap_prealloc_size;
+    }
+
+    for (uint8_t* i = start; i < (uint8_t*)g_pal_linuxsgx_state.heap_max; i += g_page_size) {
         READ_ONCE(*(size_t*)i);
     }
 }
@@ -601,7 +609,8 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
                              size_t args_size, void* uptr_env, size_t env_size,
                              int parent_stream_fd, void* uptr_qe_targetinfo, void* uptr_topo_info,
                              void* uptr_rpc_queue, void* uptr_dns_conf, bool edmm_enabled,
-                             void* urts_reserved_mem_ranges, size_t urts_reserved_mem_ranges_size) {
+                             size_t edmm_heap_prealloc_size, void* urts_reserved_mem_ranges,
+                             size_t urts_reserved_mem_ranges_size) {
     /* All our arguments are coming directly from the host. We are responsible to check them. */
     int ret;
 
@@ -631,6 +640,24 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
     g_pal_linuxsgx_state.heap_min = GET_ENCLAVE_TCB(heap_min);
     g_pal_linuxsgx_state.heap_max = GET_ENCLAVE_TCB(heap_max);
     g_pal_linuxsgx_state.edmm_enabled = edmm_enabled;
+
+    if (!edmm_enabled && edmm_heap_prealloc_size > 0) {
+        log_error("'sgx.edmm_heap_prealloc_size' must be used together with 'sgx.edmm_enable'!");
+        ocall_exit(1, /*is_exitgroup=*/true);
+    }
+
+    size_t total_heap_size = g_pal_linuxsgx_state.heap_max - g_pal_linuxsgx_state.heap_min;
+    if (edmm_heap_prealloc_size > total_heap_size) {
+        log_error("'sgx.edmm_heap_prealloc_size' must be less than total heap size 0x%lx",
+                   total_heap_size);
+        ocall_exit(1, /*is_exitgroup=*/true);
+    }
+
+    if (!IS_ALIGNED(edmm_heap_prealloc_size, g_page_size)) {
+        log_error("edmm_heap_prealloc_size must be 4K (page) aligned");
+        ocall_exit(1, /*is_exitgroup=*/true);
+    }
+    g_pal_linuxsgx_state.edmm_heap_prealloc_size = edmm_heap_prealloc_size;
 
     /* No need for adding any initial memory ranges - they are all outside of the available memory
      * set below. */
@@ -804,6 +831,20 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
     /* `- 1` is because we have the main thread that already uses one TCS */
     g_unused_tcs_pages_num = thread_num_int64 - 1;
 
+    size_t edmm_heap_prealloc_size_manifest;
+    ret = toml_sizestring_in(g_pal_public_state.manifest_root, "sgx.edmm_heap_prealloc_size",
+                             /*defaultval=*/0, &edmm_heap_prealloc_size_manifest);
+    if (ret < 0) {
+        log_error("Cannot parse 'sgx.edmm_heap_prealloc_size'");
+        ocall_exit(1, /*is_exitgroup=*/true);
+    }
+
+    if (edmm_heap_prealloc_size_manifest != g_pal_linuxsgx_state.edmm_heap_prealloc_size) {
+        log_error("edmm_heap_prealloc_size_manifest(=%ld) != edmm_heap_prealloc_size(=%ld)",
+                   edmm_heap_prealloc_size_manifest, g_pal_linuxsgx_state.edmm_heap_prealloc_size);
+        ocall_exit(1, /*is_exitgroup=*/true);
+    }
+
     int64_t rpc_thread_num;
     ret = toml_int_in(g_pal_public_state.manifest_root, "sgx.insecure__rpc_thread_num",
                       /*defaultval=*/0, &rpc_thread_num);
@@ -837,8 +878,9 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
         ocall_exit(1, /*is_exitgroup=*/true);
     }
     if (preheat_enclave) {
-        if (g_pal_linuxsgx_state.edmm_enabled) {
-            log_error("'sgx.preheat_enclave' manifest option makes no sense with EDMM enabled!");
+        if (g_pal_linuxsgx_state.edmm_enabled && !g_pal_linuxsgx_state.edmm_heap_prealloc_size) {
+            log_error("'sgx.preheat_enclave' manifest option makes no sense with EDMM enabled and "
+                      "'sgx.edmm_heap_prealloc_size' set to zero!");
             ocall_exit(1, /*is_exitgroup=*/true);
         }
         do_preheat_enclave();
