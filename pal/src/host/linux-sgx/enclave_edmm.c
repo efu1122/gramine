@@ -55,8 +55,10 @@ static void exclude_preallocated_pages(uint64_t addr, size_t* count) {
         *count = 0;
     } else if (addr + size > edmm_heap_prealloc_start) {
         /* partial overlap: update count to skip the pre-allocated region */
+        log_error("%s: partial overlap: addr = %lx", __func__, addr);
         *count = (edmm_heap_prealloc_start - addr) / PAGE_SIZE;
     } else {
+        log_error("%s: no overlap: addr = %lx", __func__, addr);
         /* no overlap: don't update count */
     }
 }
@@ -76,10 +78,21 @@ int sgx_edmm_add_pages(uint64_t addr, size_t count, uint64_t prot) {
         size_t preallocated_count = original_count - count;
         if (preallocated_count != 0) {
             memset((void*)(addr + count * PAGE_SIZE), 0, preallocated_count * PAGE_SIZE);
-            if (count == 0) {
-                /* Entire request is in pre-allocated range */
-                return 0;
+            if (preallocated_count == original_count) {
+                log_error("All preallocated. req count = preallocated_count = %zu", original_count);
             }
+            else {
+                log_error("Partial preallocated. req count = %zu, preallocated_count = %zu", original_count, preallocated_count);
+            }
+        }
+
+        if (count == 0) {
+            /* Entire request is in pre-allocated range */
+            return 0;
+        }
+        else {
+            log_error("Not preallocated. requesting (%#lx, %zu) is outside preallocated address %#lx, heap_max = %p", addr, count,
+                                        (uint64_t)g_pal_linuxsgx_state.heap_max - g_pal_linuxsgx_state.edmm_heap_prealloc_size, g_pal_linuxsgx_state.heap_max);
         }
     }
 

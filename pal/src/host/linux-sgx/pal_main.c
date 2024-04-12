@@ -663,6 +663,8 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
      * set below. */
     g_pal_public_state.memory_address_start = g_pal_linuxsgx_state.heap_min;
     g_pal_public_state.memory_address_end = g_pal_linuxsgx_state.heap_max;
+    log_error("memory_address_start = heap_min = %p", g_pal_public_state.memory_address_start);
+    log_error("memory_address_end = heap_max = %p", g_pal_public_state.memory_address_end);
 
     static_assert(SHARED_ADDR_MIN >= DBGINFO_ADDR + sizeof(struct enclave_dbginfo)
                       || DBGINFO_ADDR >= SHARED_ADDR_MIN + SHARED_MEM_SIZE,

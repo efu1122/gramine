@@ -126,6 +126,7 @@ int memory_alloc(size_t size, pal_prot_flags_t prot, void** out_addr) {
         return ret;
     }
 
+    log_error("%s: size = %zu", __func__, size);
     ret = PalVirtualMemoryAlloc((void*)addr, size, prot);
     if (ret < 0) {
         log_error("failed to allocate memory at %#lx-%#lx (prot: %#x)", addr, addr + size, prot);

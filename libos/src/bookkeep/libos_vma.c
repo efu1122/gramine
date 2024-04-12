@@ -651,6 +651,7 @@ int init_vma(void) {
             g_aslr_addr_top = (char*)g_aslr_addr_top - gap;
 
             log_debug("ASLR top address adjusted to %p", g_aslr_addr_top);
+            log_error("[heap_max] ASLR top address adjusted from %p to %p", g_pal_public_state->memory_address_end, g_aslr_addr_top);
         } else {
             log_warning("Not enough space to make meaningful address space randomization.");
         }
