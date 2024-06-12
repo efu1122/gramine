@@ -557,10 +557,10 @@ static int _bkeep_initial_vma(struct libos_vma* new_vma) {
 static int pal_mem_bkeep_alloc(size_t size, uintptr_t* out_addr);
 static int pal_mem_bkeep_free(uintptr_t addr, size_t size);
 
-#define ASLR_BITS 12
+//#define ASLR_BITS 12
 /* This variable is written to only once, during initialization, so it does not need to
  * be atomic. */
-static void* g_aslr_addr_top = NULL;
+//static void* g_aslr_addr_top = NULL;
 
 int init_vma(void) {
     PalSetMemoryBookkeepingUpcalls(pal_mem_bkeep_alloc, pal_mem_bkeep_free);
@@ -631,13 +631,14 @@ int init_vma(void) {
         return ret;
     }
 
+    /*
     g_aslr_addr_top = g_pal_public_state->memory_address_end;
 
     if (!g_pal_public_state->disable_aslr) {
-        /* Inspired by: https://elixir.bootlin.com/linux/v5.6.3/source/arch/x86/mm/mmap.c#L80 */
+        // Inspired by: https://elixir.bootlin.com/linux/v5.6.3/source/arch/x86/mm/mmap.c#L80
         size_t gap_max_size = (g_pal_public_state->memory_address_end
                                - g_pal_public_state->memory_address_start) / 6 * 5;
-        /* We do address space randomization only if we have at least ASLR_BITS to randomize. */
+        // We do address space randomization only if we have at least ASLR_BITS to randomize. 
         if (gap_max_size / ALLOC_ALIGNMENT >= (1ul << ASLR_BITS)) {
             size_t gap = 0;
 
@@ -646,7 +647,7 @@ int init_vma(void) {
                 return pal_to_unix_errno(ret);
             }
 
-            /* Resulting distribution is not ideal, but it should not be an issue here. */
+            // Resulting distribution is not ideal, but it should not be an issue here. //
             gap = ALLOC_ALIGN_DOWN(gap % gap_max_size);
             g_aslr_addr_top = (char*)g_aslr_addr_top - gap;
 
@@ -656,6 +657,7 @@ int init_vma(void) {
             log_warning("Not enough space to make meaningful address space randomization.");
         }
     }
+    */
 
     /* We need 1 vma to create the memmgr. */
     if (!add_to_thread_vma_cache(&init_vmas[0])) {
@@ -1125,7 +1127,7 @@ int bkeep_mmap_any(size_t length, int prot, int flags, struct libos_handle* file
 int bkeep_mmap_any_aslr(size_t length, int prot, int flags, struct libos_handle* file,
                         uint64_t offset, const char* comment, void** ret_val_ptr) {
     int ret;
-    ret = bkeep_mmap_any_in_range(g_pal_public_state->memory_address_start, g_aslr_addr_top, length,
+    ret = bkeep_mmap_any_in_range(g_pal_public_state->memory_address_start, g_pal_public_state->g_aslr_addr_top, length,
                                   prot, flags, file, offset, comment, ret_val_ptr);
     if (ret >= 0) {
         return ret;

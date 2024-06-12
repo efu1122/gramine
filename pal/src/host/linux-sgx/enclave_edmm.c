@@ -47,9 +47,12 @@ addr + size <-- |  Pre-allocated heap  |
 */
 static void exclude_preallocated_pages(uint64_t addr, size_t* count) {
     size_t size = *count * PAGE_SIZE;
-    uint64_t edmm_heap_prealloc_start = (uint64_t)g_pal_linuxsgx_state.heap_max -
+    uint64_t edmm_heap_prealloc_start = (uint64_t)g_pal_public_state.g_aslr_addr_top -
                                         g_pal_linuxsgx_state.edmm_heap_prealloc_size;
 
+    log_error("%s: g_aslr_addr_top = %p, edmm_heap_prealloc_start =%lx ", __func__, 
+                g_pal_public_state.g_aslr_addr_top, edmm_heap_prealloc_start );
+    
     if (addr >= edmm_heap_prealloc_start) {
         /* full overlap: entire request lies in the pre-allocated region */
         *count = 0;

@@ -9,7 +9,7 @@
 int ecall_enclave_start(char* libpal_uri, char* args, size_t args_size, char* env,
                         size_t env_size, int parent_stream_fd, sgx_target_info_t* qe_targetinfo,
                         struct pal_topo_info* topo_info, struct pal_dns_host_conf* dns_conf,
-                        bool edmm_enabled, size_t edmm_heap_prealloc_size,
+                        bool edmm_enabled, size_t edmm_heap_prealloc_size, bool aslr_disabled,
                         void* reserved_mem_ranges, size_t reserved_mem_ranges_size) {
     g_rpc_queue = NULL;
 
@@ -35,6 +35,7 @@ int ecall_enclave_start(char* libpal_uri, char* args, size_t args_size, char* en
         .dns_host_conf            = dns_conf,
         .edmm_enabled             = edmm_enabled,
         .edmm_heap_prealloc_size  = edmm_heap_prealloc_size,
+        .aslr_disabled            = aslr_disabled,
         .reserved_mem_ranges      = reserved_mem_ranges,
         .reserved_mem_ranges_size = reserved_mem_ranges_size,
         .rpc_queue                = g_rpc_queue,

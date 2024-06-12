@@ -592,15 +592,20 @@ static void do_preheat_enclave(void) {
      * sgx.edmm_heap_prealloc_size is turned on, preheat from the top of the heap until
      * sgx.edmm_heap_prealloc_size. */
     uint8_t* start = (uint8_t*)g_pal_linuxsgx_state.heap_min;
+    log_error("g_pal_linuxsgx_state.edmm_heap_prealloc_size = %zu", g_pal_linuxsgx_state.edmm_heap_prealloc_size);
     if (g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
-        start = (uint8_t*)g_pal_linuxsgx_state.heap_max -
+        start = (uint8_t*)g_pal_public_state.g_aslr_addr_top -
                 g_pal_linuxsgx_state.edmm_heap_prealloc_size;
     }
 
-    for (uint8_t* i = start; i < (uint8_t*)g_pal_linuxsgx_state.heap_max; i += g_page_size) {
+    log_error("start = %p, g_aslr_addr_top=%p", start, (uint8_t*)g_pal_public_state.g_aslr_addr_top);
+    for (uint8_t* i = start; i < (uint8_t*)g_pal_public_state.g_aslr_addr_top; i += g_page_size) {
+        log_error("i=%p", i);
         READ_ONCE(*(size_t*)i);
     }
 }
+
+#define ASLR_BITS 12
 
 /* Gramine uses GCC's stack protector that looks for a canary at gs:[0x8], but this function starts
  * with a default canary and then updates it to a random one, so we disable stack protector here */
@@ -609,7 +614,7 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
                              size_t args_size, void* uptr_env, size_t env_size,
                              int parent_stream_fd, void* uptr_qe_targetinfo, void* uptr_topo_info,
                              void* uptr_rpc_queue, void* uptr_dns_conf, bool edmm_enabled,
-                             size_t edmm_heap_prealloc_size, void* urts_reserved_mem_ranges,
+                             size_t edmm_heap_prealloc_size, bool aslr_disabled, void* urts_reserved_mem_ranges,
                              size_t urts_reserved_mem_ranges_size) {
     /* All our arguments are coming directly from the host. We are responsible to check them. */
     int ret;
@@ -640,6 +645,7 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
     g_pal_linuxsgx_state.heap_min = GET_ENCLAVE_TCB(heap_min);
     g_pal_linuxsgx_state.heap_max = GET_ENCLAVE_TCB(heap_max);
     g_pal_linuxsgx_state.edmm_enabled = edmm_enabled;
+    g_pal_linuxsgx_state.aslr_disabled = aslr_disabled;
 
     if (!edmm_enabled && edmm_heap_prealloc_size > 0) {
         log_error("'sgx.edmm_heap_prealloc_size' must be used together with 'sgx.edmm_enable'!");
@@ -663,8 +669,51 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
      * set below. */
     g_pal_public_state.memory_address_start = g_pal_linuxsgx_state.heap_min;
     g_pal_public_state.memory_address_end = g_pal_linuxsgx_state.heap_max;
+    g_pal_public_state.g_aslr_addr_top = g_pal_public_state.memory_address_end;
     log_error("memory_address_start = heap_min = %p", g_pal_public_state.memory_address_start);
     log_error("memory_address_end = heap_max = %p", g_pal_public_state.memory_address_end);
+    g_pal_public_state.disable_aslr = g_pal_linuxsgx_state.aslr_disabled;
+    log_error("disable_aslr=%d",g_pal_public_state.disable_aslr);
+
+    log_error("edmm_heap_prealloc_size=%zu, %zu", edmm_heap_prealloc_size, g_pal_linuxsgx_state.edmm_heap_prealloc_size);
+
+    if (!g_pal_public_state.disable_aslr) {
+        /* Inspired by: https://elixir.bootlin.com/linux/v5.6.3/source/arch/x86/mm/mmap.c#L80 */
+        size_t gap_max_size = (g_pal_public_state.memory_address_end
+                               - g_pal_public_state.memory_address_start) / 6 * 5;
+        /* We do address space randomization only if we have at least ASLR_BITS to randomize. */
+        if (gap_max_size / g_pal_public_state.alloc_align >= (1ul << ASLR_BITS)) {
+            size_t gap = 0;
+
+            int ret = PalRandomBitsRead(&gap, sizeof(gap));
+            if (ret < 0) {
+                log_error("PalRandomBitsRead failed");
+                ocall_exit(1, /*is_exitgroup=*/true);
+            }
+            
+            /* Resulting distribution is not ideal, but it should not be an issue here. */
+            gap = ALLOC_ALIGN_DOWN(gap % gap_max_size);
+            if (g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
+                size_t gap_min = (g_pal_public_state.memory_address_end - g_pal_public_state.memory_address_start) 
+                                - g_pal_linuxsgx_state.edmm_heap_prealloc_size;
+                log_error("gap = %zu, gap_min = %zu", gap, gap_min);
+                if (gap > gap_min) {
+                    gap = ALLOC_ALIGN_DOWN(gap_min);
+                }
+            }
+            g_pal_public_state.g_aslr_addr_top = g_pal_public_state.g_aslr_addr_top - gap;
+            log_debug("ASLR top address adjusted to %p", g_pal_public_state.g_aslr_addr_top);
+            log_error("[heap_max] ASLR top address adjusted from %p to %p (gap = %zu)", g_pal_public_state.memory_address_end, g_pal_public_state.g_aslr_addr_top, gap);
+        } else {
+            log_warning("Not enough space to make meaningful address space randomization.");
+        }
+    }
+
+    if (g_pal_linuxsgx_state.edmm_enabled && g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
+        log_error("do preheat");
+        do_preheat_enclave();
+    }
+    log_error("after preheat");
 
     static_assert(SHARED_ADDR_MIN >= DBGINFO_ADDR + sizeof(struct enclave_dbginfo)
                       || DBGINFO_ADDR >= SHARED_ADDR_MIN + SHARED_MEM_SIZE,
@@ -879,13 +928,13 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
         log_error("Cannot parse 'sgx.preheat_enclave' (the value must be `true` or `false`)");
         ocall_exit(1, /*is_exitgroup=*/true);
     }
+
     if (preheat_enclave) {
         if (g_pal_linuxsgx_state.edmm_enabled && !g_pal_linuxsgx_state.edmm_heap_prealloc_size) {
             log_error("'sgx.preheat_enclave' manifest option makes no sense with EDMM enabled and "
                       "'sgx.edmm_heap_prealloc_size' set to zero!");
             ocall_exit(1, /*is_exitgroup=*/true);
         }
-        do_preheat_enclave();
     }
 
     if ((ret = init_seal_key_material()) < 0) {

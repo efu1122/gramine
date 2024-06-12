@@ -30,6 +30,7 @@ struct ecall_enclave_start {
     struct pal_dns_host_conf* dns_host_conf;
     unsigned char             edmm_enabled;
     size_t                    edmm_heap_prealloc_size;
+    unsigned char             aslr_disabled;
     void*                     reserved_mem_ranges;
     size_t                    reserved_mem_ranges_size;
 

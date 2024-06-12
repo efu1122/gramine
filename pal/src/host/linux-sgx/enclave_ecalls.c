@@ -102,6 +102,7 @@ void handle_ecall(long ecall_index, void* ecall_args, void* exit_target, void* e
                        COPY_UNTRUSTED_VALUE(&start_args->dns_host_conf),
                        COPY_UNTRUSTED_VALUE(&start_args->edmm_enabled),
                        COPY_UNTRUSTED_VALUE(&start_args->edmm_heap_prealloc_size),
+                       COPY_UNTRUSTED_VALUE(&start_args->aslr_disabled),
                        COPY_UNTRUSTED_VALUE(&start_args->reserved_mem_ranges),
                        COPY_UNTRUSTED_VALUE(&start_args->reserved_mem_ranges_size));
     } else {

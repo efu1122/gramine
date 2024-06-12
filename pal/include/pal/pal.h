@@ -151,6 +151,7 @@ struct pal_public_state {
     uintptr_t early_libos_mem_range_end;    /*!< end of memory usable before checkpoint restore */
     void* shared_address_start;             /*!< usable shared memory start address */
     void* shared_address_end;               /*!< usable shared memory end address */
+    void* g_aslr_addr_top;                  /*!< aslr adjusted memory top address */
 
     struct pal_initial_mem_range* initial_mem_ranges; /*!< array of initial memory ranges, see
                                                            `pal_memory.c` for more details */

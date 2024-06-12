@@ -688,6 +688,14 @@ static int parse_loader_config(char* manifest, struct pal_enclave* enclave_info,
         ret = -EINVAL;
         goto out;
     }
+    
+    ret = toml_bool_in(manifest_root, "loader.insecure__disable_aslr", /*defaultval=*/false,
+                       &enclave_info->aslr_disabled);
+    if (ret < 0) {
+        log_error("Cannot parse 'loader.insecure__disable_aslr'");
+        ret = -EINVAL;
+        goto out;
+    }
 
     ret = toml_sizestring_in(manifest_root, "sgx.edmm_heap_prealloc_size", /*defaultval=*/0,
                              &enclave_info->edmm_heap_prealloc_size);
@@ -1085,7 +1093,7 @@ static int load_enclave(struct pal_enclave* enclave, char* args, size_t args_siz
     /* start running trusted PAL */
     ecall_enclave_start(enclave->libpal_uri, args, args_size, env, env_size, parent_stream_fd,
                         &qe_targetinfo, &topo_info, &dns_conf, enclave->edmm_enabled,
-                        enclave->edmm_heap_prealloc_size, reserved_mem_ranges,
+                        enclave->edmm_heap_prealloc_size, enclave->aslr_disabled, reserved_mem_ranges,
                         reserved_mem_ranges_size);
 
     unmap_my_tcs();
