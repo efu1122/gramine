@@ -709,11 +709,13 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
         }
     }
 
+    /*
     if (g_pal_linuxsgx_state.edmm_enabled && g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
         log_error("do preheat");
         do_preheat_enclave();
     }
     log_error("after preheat");
+    */
 
     static_assert(SHARED_ADDR_MIN >= DBGINFO_ADDR + sizeof(struct enclave_dbginfo)
                       || DBGINFO_ADDR >= SHARED_ADDR_MIN + SHARED_MEM_SIZE,
@@ -935,7 +937,10 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
                       "'sgx.edmm_heap_prealloc_size' set to zero!");
             ocall_exit(1, /*is_exitgroup=*/true);
         }
+        log_error("do preheat");
+        do_preheat_enclave();
     }
+    log_error("after preheat");
 
     if ((ret = init_seal_key_material()) < 0) {
         log_error("Failed to initialize SGX sealing key material: %s", pal_strerror(ret));
