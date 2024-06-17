@@ -931,14 +931,9 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
         ocall_exit(1, /*is_exitgroup=*/true);
     }
 
-    if (preheat_enclave) {
-        if (g_pal_linuxsgx_state.edmm_enabled && !g_pal_linuxsgx_state.edmm_heap_prealloc_size) {
-            log_error("'sgx.preheat_enclave' manifest option makes no sense with EDMM enabled and "
-                      "'sgx.edmm_heap_prealloc_size' set to zero!");
-            ocall_exit(1, /*is_exitgroup=*/true);
-        }
-        log_error("do preheat");
-        do_preheat_enclave();
+    if (g_pal_linuxsgx_state.edmm_enabled && g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
+         log_error("do preheat");
+         do_preheat_enclave();
     }
     log_error("after preheat");
 

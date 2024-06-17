@@ -50,6 +50,37 @@ static void exclude_preallocated_pages(uint64_t addr, size_t* count) {
     uint64_t edmm_heap_prealloc_start = (uint64_t)g_pal_public_state.g_aslr_addr_top -
                                         g_pal_linuxsgx_state.edmm_heap_prealloc_size;
 
+    log_error("g_aslr_addr_top = %p, edmm_heap_prealloc_start =%lx, addr = %lx, addr+size= %lx", 
+                g_pal_public_state.g_aslr_addr_top, edmm_heap_prealloc_start, addr, addr+size);
+    
+    if (addr > (uint64_t)g_pal_public_state.g_aslr_addr_top ||
+        addr + size < edmm_heap_prealloc_start) {
+        log_error("%s: no overlap", __func__);
+        /* no overlap: don't update count */
+    } else if (addr >= edmm_heap_prealloc_start &&
+        addr + size <= (uint64_t)g_pal_public_state.g_aslr_addr_top) {
+        /* full overlap: entire request lies in the pre-allocated region */
+        log_error("%s: full overlap", __func__);
+        *count = 0;
+    } else {
+        /* partial overlap: update count to skip the pre-allocated region */
+        if (addr < edmm_heap_prealloc_start) {
+            *count = (edmm_heap_prealloc_start - addr) / PAGE_SIZE;
+            log_error("%s: partial overlap 1: *count = %zu", __func__, *count);
+        }
+        else {
+            *count = (addr + size - (uint64_t)g_pal_public_state.g_aslr_addr_top) / PAGE_SIZE;
+            log_error("%s: partial overlap 2: *count = %zu", __func__, *count);
+        }
+    } 
+}
+
+#if 0
+static void exclude_preallocated_pages(uint64_t addr, size_t* count) {
+    size_t size = *count * PAGE_SIZE;
+    uint64_t edmm_heap_prealloc_start = (uint64_t)g_pal_public_state.g_aslr_addr_top -
+                                        g_pal_linuxsgx_state.edmm_heap_prealloc_size;
+
     log_error("%s: g_aslr_addr_top = %p, edmm_heap_prealloc_start =%lx ", __func__, 
                 g_pal_public_state.g_aslr_addr_top, edmm_heap_prealloc_start );
     
@@ -65,6 +96,7 @@ static void exclude_preallocated_pages(uint64_t addr, size_t* count) {
         /* no overlap: don't update count */
     }
 }
+#endif
 
 int sgx_edmm_add_pages(uint64_t addr, size_t count, uint64_t prot) {
     int ret;
