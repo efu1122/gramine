@@ -31,6 +31,7 @@ struct ecall_enclave_start {
     unsigned char             edmm_enabled;
     size_t                    edmm_heap_prealloc_size;
     unsigned char             aslr_disabled;
+    void*                     aslr_top;
     void*                     reserved_mem_ranges;
     size_t                    reserved_mem_ranges_size;
 

@@ -713,6 +713,43 @@ static int parse_loader_config(char* manifest, struct pal_enclave* enclave_info,
         goto out;
     }
 
+    // probably should handle ASLR top here
+    //[heap_max] ASLR
+    #if 0
+    if (!g_pal_public_state.disable_aslr) {
+        /* Inspired by: https://elixir.bootlin.com/linux/v5.6.3/source/arch/x86/mm/mmap.c#L80 */
+        size_t gap_max_size = (g_pal_public_state.memory_address_end
+                               - g_pal_public_state.memory_address_start) / 6 * 5;
+        /* We do address space randomization only if we have at least ASLR_BITS to randomize. */
+        if (gap_max_size / g_page_size >= (1ul << ASLR_BITS)) {
+            size_t gap = 0;
+
+            int ret = PalRandomBitsRead(&gap, sizeof(gap));
+            if (ret < 0) {
+                log_error("PalRandomBitsRead failed");
+                ocall_exit(1, /*is_exitgroup=*/true);
+            }
+            
+            /* Resulting distribution is not ideal, but it should not be an issue here. */
+            gap = ALLOC_ALIGN_DOWN(gap % gap_max_size);
+            if (g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
+                size_t gap_min = (g_pal_public_state.memory_address_end - g_pal_public_state.memory_address_start) 
+                                - g_pal_linuxsgx_state.edmm_heap_prealloc_size;
+                log_error("gap = %zu, gap_min = %zu", gap, gap_min);
+                if (gap > gap_min) {
+                    gap = ALLOC_ALIGN_DOWN(gap_min);
+                }
+            }
+            g_pal_public_state.g_aslr_addr_top = g_pal_public_state.g_aslr_addr_top - gap;
+            log_debug("ASLR top address adjusted to %p", g_pal_public_state.g_aslr_addr_top);
+            log_error("[heap_max] ASLR top address adjusted from %p to %p (gap = %zu)", g_pal_public_state.memory_address_end, g_pal_public_state.g_aslr_addr_top, gap);
+        } else {
+            log_warning("Not enough space to make meaningful address space randomization.");
+        }
+    }
+    #endif
+
+
     if (!IS_ALIGNED(enclave_info->edmm_heap_prealloc_size, g_page_size)) {
         log_error("'sgx.edmm_heap_prealloc_size' must be 4K (page) aligned");
         ret = -EINVAL;

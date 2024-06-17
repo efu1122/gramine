@@ -709,7 +709,7 @@ noreturn void pal_linux_main(void* uptr_libpal_uri, size_t libpal_uri_len, void*
         }
     }
 
-    /*
+    /* too early
     if (g_pal_linuxsgx_state.edmm_enabled && g_pal_linuxsgx_state.edmm_heap_prealloc_size > 0) {
         log_error("do preheat");
         do_preheat_enclave();
