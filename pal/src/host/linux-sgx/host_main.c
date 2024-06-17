@@ -502,6 +502,8 @@ static int initialize_enclave(struct pal_enclave* enclave, const char* manifest_
                     ret = -EINVAL;
                     goto out;
                 }
+                log_error("initialize_enclave(): %s, addr=%lx, size=%lx",
+                              areas[i].desc, areas[i].addr, areas[i].size);
                 areas[i].addr = areas[i].addr + areas[i].size - enclave->edmm_heap_prealloc_size;
                 areas[i].size = enclave->edmm_heap_prealloc_size;
             }

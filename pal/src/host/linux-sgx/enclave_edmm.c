@@ -131,6 +131,7 @@ int sgx_edmm_add_pages(uint64_t addr, size_t count, uint64_t prot) {
         }
     }
 
+    log_error("%s: addr = %lx, count = %zu", __func__, addr, count);
     for (size_t i = 0; i < count; i++) {
         /* SGX2 HW requires initial page permissions to be RW. */
         ret = sgx_eaccept(addr + i * PAGE_SIZE, (SGX_PAGE_TYPE_REG << SGX_SECINFO_FLAGS_TYPE_SHIFT)
