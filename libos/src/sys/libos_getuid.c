@@ -83,6 +83,72 @@ out:
     return ret;
 }
 
+long libos_syscall_setreuid(uid_t ruid, uid_t euid) {
+    int ret;
+    struct libos_thread* current = get_cur_thread();
+
+    lock(&current->lock);
+    if (current->euid != 0) {
+        /* unprivileged user */
+        if (ruid != -1 && ruid != current->uid && ruid != current->euid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (euid != -1 && euid != current->uid && euid != current->euid && euid != current->suid) {
+            ret = -EPERM;
+            goto out;
+        }
+    }
+
+    if (ruid != -1 && ruid != current->uid || euid != -1 && euid != current->uid) {
+        /* If the real user ID is set or the effective user ID is set to a value not equal to the
+         * previous real user ID, the saved set-user-ID will be set to the new effective user ID.*/
+        current->suid = euid;
+    }
+
+    if (ruid != -1)
+        current->uid = ruid;
+    if (euid != -1)
+        current->euid = euid;
+    ret = 0;
+out:
+    unlock(&current->lock);
+    return ret;
+}
+
+long libos_syscall_setregid(gid_t rgid, gid_t egid) {
+    int ret;
+    struct libos_thread* current = get_cur_thread();
+
+    lock(&current->lock);
+    if (current->euid != 0) {
+        /* unprivileged user */
+        if (rgid != -1 && rgid != current->gid && rgid != current->egid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (egid != -1 && egid != current->gid && egid != current->egid && egid != current->sgid) {
+            ret = -EPERM;
+            goto out;
+        }
+    }
+
+    if (rgid != -1 && rgid != current->gid || egid != -1 && egid != current->gid) {
+        /* If the real user ID is set or the effective user ID is set to a value not equal to the
+         * previous real user ID, the saved set-user-ID will be set to the new effective user ID.*/
+        current->sgid = egid;
+    }
+
+    if (rgid != -1)
+        current->gid = rgid;
+    if (egid != -1)
+        current->egid = egid;
+    ret = 0;
+out:
+    unlock(&current->lock);
+    return ret;
+}
+
 #define NGROUPS_MAX 65536 /* # of supplemental group IDs; has to be same as host OS */
 
 long libos_syscall_setgroups(int gidsetsize, gid_t* grouplist) {
@@ -140,4 +206,98 @@ long libos_syscall_getgroups(int gidsetsize, gid_t* grouplist) {
     }
 
     return (int)ret_size;
+}
+
+long libos_syscall_setresuid(uid_t ruid, uid_t euid, uid_t suid) {
+    int ret;
+    struct libos_thread* current = get_cur_thread();
+
+    lock(&current->lock);
+    if (current->euid != 0) {
+        /* unprivileged user */
+        if (ruid != -1 && ruid != current->uid && ruid != current->euid && ruid != current->suid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (euid != -1 && euid != current->uid && euid != current->euid && euid != current->suid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (suid != -1 && suid != current->uid && suid != current->euid && suid != current->suid) {
+            ret = -EPERM;
+            goto out;
+        }
+    }
+    if (ruid != -1)
+        current->uid  = ruid;
+    if (euid != -1)
+        current->euid = euid;
+    if (suid != -1)
+        current->suid = suid;
+    ret = 0;
+out:
+    unlock(&current->lock);
+    return ret;
+}
+
+long libos_syscall_getresuid(uid_t* ruid, uid_t* euid, uid_t* suid) {
+    if (!is_user_memory_writable(ruid, sizeof(*ruid)) ||
+        !is_user_memory_writable(euid, sizeof(*euid)) ||
+        !is_user_memory_writable(suid, sizeof(*suid)))
+        return -EFAULT;
+
+    struct libos_thread* current = get_cur_thread();
+    lock(&current->lock);
+    *ruid = current->uid;
+    *euid = current->euid;
+    *suid = current->suid;
+    unlock(&current->lock);
+    return 0;
+}
+
+long libos_syscall_setresgid(gid_t rgid, gid_t egid, gid_t sgid) {
+    int ret;
+    struct libos_thread* current = get_cur_thread();
+
+    lock(&current->lock);
+    if (current->euid != 0) {
+        /* unprivileged user */
+        if (rgid != -1 && rgid != current->gid && rgid != current->egid && rgid != current->sgid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (egid != -1 && egid != current->gid && egid != current->egid && egid != current->sgid) {
+            ret = -EPERM;
+            goto out;
+        }
+        if (sgid != -1 && sgid != current->gid && sgid != current->egid && sgid != current->sgid) {
+            ret = -EPERM;
+            goto out;
+        }
+    }
+    if (rgid != -1)
+        current->gid  = rgid;
+    if (egid != -1)
+        current->egid = egid;
+    if (sgid != -1)
+        current->sgid = sgid;
+    ret = 0;
+out:
+    unlock(&current->lock);
+    return ret;
+}
+
+long libos_syscall_getresgid(gid_t* rgid, gid_t* egid, gid_t* sgid) {
+    if (!is_user_memory_writable(rgid, sizeof(*rgid)) ||
+        !is_user_memory_writable(egid, sizeof(*egid)) ||
+        !is_user_memory_writable(sgid, sizeof(*sgid)))
+        return -EFAULT;
+
+    struct libos_thread* current = get_cur_thread();
+    lock(&current->lock);
+    *rgid = current->gid;
+    *egid = current->egid;
+    *sgid = current->sgid;
+    unlock(&current->lock);
+    return 0;
 }

@@ -501,10 +501,10 @@ The below list is generated from the [syscall table of Linux
 - ▣ `setsid()`
   <sup>[23](#misc)</sup>
 
-- ☒ `setreuid()`
+- ▣ `setreuid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
-- ☒ `setregid()`
+- ▣ `setregid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
 - ▣ `getgroups()`
@@ -513,16 +513,16 @@ The below list is generated from the [syscall table of Linux
 - ▣ `setgroups()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
-- ☒ `setresuid()`
+- ▣ `setresuid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
-- ☒ `getresuid()`
+- ▣ `getresuid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
-- ☒ `setresgid()`
+- ▣ `setresgid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
-- ☒ `getresgid()`
+- ▣ `getresgid()`
   <sup>[8](#user-and-group-identifiers)</sup>
 
 - ▣ `getpgid()`
@@ -1928,9 +1928,9 @@ Gramine has dummy support for the following identifiers:
 The corresponding system calls are:
 - `getuid()`, `getgid()`, `setuid()`, `setgid()` for UID and GID (implemented);
 - `geteuid()`, `getegid()` for EUID and EGID (implemented);
-- `setreuid()`, `setregid()` for UID + EUID and GID + EGID (not implemented);
+- `setreuid()`, `setregid()` for UID + EUID and GID + EGID (implemented);
 - `getresuid()`, `setresuid()`, `getresgid()`, `setresgid()` for UID + EUID + SUID
-  and GID + EGID + SGID (not implemented).
+  and GID + EGID + SGID (implemented).
 
 Gramine starts the application with UID = EUID = SUID and equal to `loader.uid` {ref}`manifest
 option <user-id-and-group-id>`. Similarly, the application is started with GID = EGID = SGID and
@@ -1965,13 +1965,13 @@ Gramine does *not* currently implement user/group ID fields in the `/proc/[pid]/
 - ▣ `getegid()`: dummy
 - ▣ `getgroups()`: dummy
 - ▣ `setgroups()`: dummy
+- ▣ `setreuid()`: dummy
+- ▣ `setregid()`: dummy
+- ▣ `getresuid()`: dummy
+- ▣ `setresuid()`: dummy
+- ▣ `getresgid()`: dummy
+- ▣ `setresgid()`: dummy
 
-- ☒ `setreuid()`: very rarely used by applications, may be implemented in the future
-- ☒ `setregid()`: very rarely used by applications, may be implemented in the future
-- ☒ `getresuid()`: very rarely used by applications, may be implemented in the future
-- ☒ `setresuid()`: very rarely used by applications, may be implemented in the future
-- ☒ `getresgid()`: very rarely used by applications, may be implemented in the future
-- ☒ `setresgid()`: very rarely used by applications, may be implemented in the future
 - ☒ `setfsuid()`: very rarely used by applications
 - ☒ `setfsgid()`: very rarely used by applications
 
